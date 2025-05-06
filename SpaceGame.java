@@ -32,7 +32,7 @@ public class SpaceGame extends JFrame implements KeyListener {
     private int projectileX, projectileY;
     private boolean isProjectileVisible;
     private boolean isFiring;
-    private java.util.List<Point> obstacles;
+    //private java.util.List<Point> obstacles;
     private BufferedImage spriteSheet;
     private int spriteWidth = 64;
     private int spriteHeight = 64;
@@ -44,6 +44,21 @@ public class SpaceGame extends JFrame implements KeyListener {
     private List<Point> stars;
     private BufferedImage shipImage;
     private Clip clip;
+
+    private GameState gameState = GameState.PLAYING;
+    private PlayerState playerState = PlayerState.IDLE;
+
+    // Each obstacle has its own state
+    private class Obstacle {
+        Point position;
+        ObstacleState state;
+
+        Obstacle(int x, int y) {
+            this.position = new Point(x, y);
+            this.state = ObstacleState.FALLING;
+        }
+    }
+    private List<Obstacle> obstacleList = new ArrayList<>();
 
     public SpaceGame() {
 
@@ -93,7 +108,7 @@ public class SpaceGame extends JFrame implements KeyListener {
         isProjectileVisible = false;
         isGameOver = false;
         isFiring = false;
-        obstacles = new java.util.ArrayList<>();
+        //obstacles = new java.util.ArrayList<>();
 
         timer = new Timer(20, new ActionListener() {
             @Override
@@ -156,20 +171,25 @@ public class SpaceGame extends JFrame implements KeyListener {
         //for (Point obstacle : obstacles) {
         //    g.fillRect(obstacle.x, obstacle.y, OBSTACLE_WIDTH, OBSTACLE_HEIGHT);
         //}
-            for (Point obstacle : obstacles) {
-                if (spriteSheet != null) {
-                    // Randomly select a sprite index (0-3)
-                    Random random = new Random();
-                    int spriteIndex = random.nextInt(4);
+        for (Obstacle obstacle : obstacleList) {
+            if (spriteSheet != null && obstacle.state == ObstacleState.FALLING) {
+                // Randomly select a sprite index (0-3)
+                Random random = new Random();
+                int spriteIndex = random.nextInt(4);
 
-                    // Calculate the x and y coordinates of the selected sprite on the sprite sheet
-                    int spriteX = spriteIndex * spriteWidth;
-                    int spriteY = 0; // Assuming all sprites are in the first row
+                // Calculate the x and y coordinates of the selected sprite on the sprite sheet
+                int spriteX = spriteIndex * spriteWidth;
+                int spriteY = 0; // Assuming all sprites are in the first row
 
-                    // Draw the selected sprite onto the canvas
-                    g.drawImage(spriteSheet.getSubimage(spriteX, spriteY, spriteWidth, spriteHeight), obstacle.x, obstacle.y, null);
-                }
+                // Draw the selected sprite onto the canvas at the obstacle's position
+                g.drawImage(
+                        spriteSheet.getSubimage(spriteX, spriteY, spriteWidth, spriteHeight),
+                        obstacle.position.x,
+                        obstacle.position.y,
+                        null
+                );
             }
+        }
 
             // Draw stars
             g.setColor(generateRandomColor());
@@ -188,18 +208,20 @@ public class SpaceGame extends JFrame implements KeyListener {
     private void update() {
         if (!isGameOver) {
             // Move obstacles
-            for (int i = 0; i < obstacles.size(); i++) {
-                obstacles.get(i).y += OBSTACLE_SPEED;
-                if (obstacles.get(i).y > HEIGHT) {
-                    obstacles.remove(i);
-                    i--;
+            for (int i = 0; i < obstacleList.size(); i++) {
+                Obstacle obs = obstacleList.get(i);
+                if (obs.state == ObstacleState.FALLING) {
+                    obs.position.y += OBSTACLE_SPEED;
+                    if (obs.position.y > HEIGHT) {
+                        obstacleList.remove(i--);
+                    }
                 }
             }
 
-            // Generate new obstacles
+            // Generate new obstacles Spawning
             if (Math.random() < 0.02) {
                 int obstacleX = (int) (Math.random() * (WIDTH - OBSTACLE_WIDTH));
-                obstacles.add(new Point(obstacleX, 0));
+                obstacleList.add(new Obstacle(obstacleX, 0));
             }
 
             if (Math.random() < 0.1) {
@@ -216,25 +238,26 @@ public class SpaceGame extends JFrame implements KeyListener {
 
             // Check collision with player
             Rectangle playerRect = new Rectangle(playerX, playerY, PLAYER_WIDTH, PLAYER_HEIGHT);
-            for (Point obstacle : obstacles) {
-                Rectangle obstacleRect = new Rectangle(obstacle.x, obstacle.y, OBSTACLE_WIDTH, OBSTACLE_HEIGHT);
+            for (Obstacle obstacle : obstacleList) {
+                Rectangle obstacleRect = new Rectangle(obstacle.position.x, obstacle.position.y, OBSTACLE_WIDTH, OBSTACLE_HEIGHT);
                 if (playerRect.intersects(obstacleRect) && !isShieldActive()) {
-                    isGameOver = true;
+                    gameState = GameState.GAME_OVER;
                     break;
                 }
             }
 
             // Check collision with obstacle
-                Rectangle projectileRect = new Rectangle(projectileX, projectileY, PROJECTILE_WIDTH, PROJECTILE_HEIGHT);
-                for (int i = 0; i < obstacles.size(); i++) {
-                    Rectangle obstacleRect = new Rectangle(obstacles.get(i).x, obstacles.get(i).y, OBSTACLE_WIDTH, OBSTACLE_HEIGHT);
-                    if (projectileRect.intersects(obstacleRect)) {
-                        obstacles.remove(i);
-                        score += 10;
-                        isProjectileVisible = false;
-                        break;
-                    }
+            Rectangle projectileRect = new Rectangle(projectileX, projectileY, PROJECTILE_WIDTH, PROJECTILE_HEIGHT);
+            for (int i = 0; i < obstacleList.size(); i++) {
+                Obstacle obstacle = obstacleList.get(i);
+                Rectangle obstacleRect = new Rectangle(obstacle.position.x, obstacle.position.y, OBSTACLE_WIDTH, OBSTACLE_HEIGHT);
+                if (projectileRect.intersects(obstacleRect)) {
+                    obstacleList.remove(i--);
+                    score += 10;
+                    isProjectileVisible = false;
+                    break;
                 }
+            }
                 scoreLabel.setText("Score: " + score);
             }
     }
