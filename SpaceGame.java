@@ -285,33 +285,39 @@ public class SpaceGame extends JFrame implements KeyListener {
     @Override
     public void keyPressed(KeyEvent e) {
         int keyCode = e.getKeyCode();
+
         if (keyCode == KeyEvent.VK_LEFT && playerX > 0) {
             playerX -= PLAYER_SPEED;
+            playerState = PlayerState.MOVING_LEFT;
         } else if (keyCode == KeyEvent.VK_RIGHT && playerX < WIDTH - PLAYER_WIDTH) {
             playerX += PLAYER_SPEED;
+            playerState = PlayerState.MOVING_RIGHT;
         } else if (keyCode == KeyEvent.VK_ESCAPE) {
             reset();
         } else if (keyCode == KeyEvent.VK_CONTROL) {
             activateShield();
+            playerState = PlayerState.SHIELDING;
         } else if (keyCode == KeyEvent.VK_SPACE && !isFiring) {
             playSound();
             isFiring = true;
+            playerState = PlayerState.FIRING;
+
             projectileX = playerX + PLAYER_WIDTH / 2 - PROJECTILE_WIDTH / 2;
             projectileY = playerY;
             isProjectileVisible = true;
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        Thread.sleep(500); // Limit firing rate
-                        isFiring = false;
-                    } catch (InterruptedException ex) {
-                        ex.printStackTrace();
-                    }
+
+            new Thread(() -> {
+                try {
+                    Thread.sleep(500); // Limit firing rate
+                    isFiring = false;
+                    playerState = PlayerState.IDLE;
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
                 }
             }).start();
         }
     }
+
 
     @Override
     public void keyTyped(KeyEvent e) {}

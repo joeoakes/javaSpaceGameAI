@@ -1,3 +1,7 @@
-public enum PlayerState {
-    IDLE, MOVING, SHOOTING, SHIELDED
+enum PlayerState {
+    IDLE,
+    MOVING_LEFT,
+    MOVING_RIGHT,
+    FIRING,
+    SHIELDING
 }
